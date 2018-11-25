@@ -24,7 +24,7 @@
 
 #define BACKLOG 10
 
-int init_socket(int* sockfd, int port);
+void init_socket(int* sockfd, int port);
 int recieve(int* sockfd, char* buf, int size);
 
 #endif

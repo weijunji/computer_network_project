@@ -6,7 +6,7 @@ void _cleanWSA() {
 #endif
 }
 
-int init_socket(int* sockfd, char* ip, int port) {
+void init_socket(int* sockfd, char* ip, int port) {
 	
 #ifdef WIN32
 	WSADATA WSAData;

@@ -30,7 +30,7 @@
 
 #endif
 
-int init_socket(int* sockfd, char* ip, int port);
+void init_socket(int* sockfd, char* ip, int port);
 int ssend(int* sockfd, char* buf);
 void cleanup(int* sockfd);
 

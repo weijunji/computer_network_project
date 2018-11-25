@@ -6,7 +6,7 @@ void _cleanWSA() {
 #endif // WIN32
 }
 
-int init_socket(int* sockfd, int port) {
+void init_socket(int* sockfd, int port) {
 	struct sockaddr_in ServerAddr;
 
 	// init WSA

@@ -63,6 +63,7 @@ void physical_layer(char* data){
 
 	free(sockfd);
 	cleanup(sockfd);
+	free(bit_stream);
 }
 
 /* End of physical layer */
