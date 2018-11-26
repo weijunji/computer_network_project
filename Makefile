@@ -31,6 +31,16 @@ socket_client.o :
 client_main.o : socket_client.o
 	cd $(CLIENT_DIR) && $(CC) $(CFLAGS) -c -o main.o main.c
 
+SRC_DIR = src/
+
+skb_test : skb_test.o sk_buff.o
+	cd $(SRC_DIR) && $(CC) -o skb_test skb_test.o sk_buff.o
+
+skb_test.o : 
+	cd $(SRC_DIR) && $(CC) $(CFLAGS) -c -o skb_test.o sk_buff_test.c
+sk_buff.o :
+	cd $(SRC_DIR) && $(CC) $(CFLAGS) -c -o sk_buff.o sk_buff.c
+
 .PHONY : clean
 clean: 
-	rm src/server/*.o src/client/*.o
+	rm src/server/*.o src/client/*.o src/*.o
