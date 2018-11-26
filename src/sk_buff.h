@@ -46,6 +46,6 @@ void skb_put(struct sk_buff *skb, unsigned char* data, unsigned int len);
 // 发送用，在数据区头部添加空间
 void skb_push(struct sk_buff *skb, unsigned char* data, unsigned int len);
 // skb_pull 接收用，忽略数据区头部的数据，即移除包头
-void skb_push(struct sk_buff *skb, unsigned int len);
+void skb_pull(struct sk_buff *skb, unsigned int len);
 
 #endif

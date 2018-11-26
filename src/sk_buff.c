@@ -4,6 +4,8 @@ struct sk_buff* alloc_skb(unsigned int size){
     struct sk_buff* skb = (struct sk_buff*) malloc(sizeof(struct sk_buff));
     skb->head = (unsigned char*) malloc(sizeof(unsigned char) * (MAX_TCP_HEADER + size + MAX_TAIL));
     skb->end = skb->head + (MAX_TCP_HEADER + size + MAX_TAIL);
+    skb->data = skb->head;
+    skb->tail = skb->head;
     _skb_reserver(skb, MAX_TCP_HEADER);
     skb->next = NULL;
     skb->prev = NULL;
@@ -24,16 +26,15 @@ void skb_put(struct sk_buff *skb, unsigned char* data, unsigned int len){
     strcpy(skb->tail, data);
     skb->tail += len;
     skb->len += len;
-    *(skb->tail) = '\0';
 }
 
 void skb_push(struct sk_buff *skb, unsigned char* data, unsigned int len){
     skb->data -= len;
-    strcpy(skb->data, data);
+    strcpy(skb->data, data); // TODO: rewrite strcpy (strcpy will put '\0' to the end)
     skb->len += len;
 }
 
-void skb_push(struct sk_buff *skb, unsigned int len){
+void skb_pull(struct sk_buff *skb, unsigned int len){
     skb->data += len;
     skb->len -= len;
 }
