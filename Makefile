@@ -34,7 +34,7 @@ client_main.o : socket_client.o
 SRC_DIR = src/
 
 skb_test : skb_test.o sk_buff.o
-	cd $(SRC_DIR) && $(CC) -o skb_test skb_test.o sk_buff.o
+	$(CC) -o bin/skb_test $(SRC_DIR)skb_test.o $(SRC_DIR)sk_buff.o
 
 skb_test.o : 
 	cd $(SRC_DIR) && $(CC) $(CFLAGS) -c -o skb_test.o sk_buff_test.c
