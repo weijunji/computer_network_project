@@ -44,3 +44,9 @@ void skb_pull(struct sk_buff *skb, unsigned int len){
     skb->data += len;
     skb->len -= len;
 }
+
+void skb_remove(struct sk_buff *skb, unsigned int len){
+    skb->tail -= len;
+    *(skb->tail) = '\0';
+    skb->len -= len;
+}
