@@ -1,7 +1,6 @@
 #ifndef SK_BUFF_H
 #define SK_BUFF_H
 
-#include <string.h>
 #include <stdlib.h>
 
 #define LL_MAX_HEADER 128
