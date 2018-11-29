@@ -33,8 +33,8 @@ struct sk_buff{
 
     unsigned short  protocol; // 通知上层用什么协议处理
 
-    char*           dis_ip;   // 目的ip
-    int             dis_port; // 目的端口
+    char*           dest_ip;   // 目的ip
+    int             dest_port; // 目的端口
 };
 
 #define skb_data(SKB) (SKB->data)
