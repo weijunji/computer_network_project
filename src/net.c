@@ -22,8 +22,8 @@ int get_local_ip(char* ip) {
 	return 0;
 }
 
-void mac_address_format(unsigned char* address, char* format) {
-	sprintf(format, "%02x:%02x:%02x:%02x:%02x:%02x",
+void print_mac_address(unsigned char* address) {
+	printf("%02x:%02x:%02x:%02x:%02x:%02x",
 		address[0],
 		address[1],
 		address[2],
