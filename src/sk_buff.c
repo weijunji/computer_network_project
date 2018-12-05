@@ -25,6 +25,7 @@ static void _skb_reserver(struct sk_buff *skb, int len){
 void skb_put(struct sk_buff *skb, unsigned char* data, unsigned int len){
     memcpy(skb->tail, data, len);
     skb->tail += len;
+    *(skb->tail) = '\0';
     skb->len += len;
 }
 
