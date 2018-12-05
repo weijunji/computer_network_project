@@ -69,7 +69,7 @@ int get_local_mac(unsigned char* mac){
     return 0;
 }
 
-int get_remote_mac(char* ip, char* mac){
+int get_remote_mac(char* ip, unsigned char* mac){
     #ifdef WIN32
     HRESULT hr;
 	IPAddr  ipAddr;
@@ -83,9 +83,15 @@ int get_remote_mac(char* ip, char* mac){
 	hr = SendARP(ipAddr, 0, pulMac, &ulLen);
 	if (hr != NO_ERROR)
 		return -1;
-    strcpy(mac, (char*) pulMac);
+    strcpy((char*)mac, (char*) pulMac);
 
 	#elif __linux
+	mac[0] = 0xff;
+	mac[1] = 0xff;
+	mac[2] = 0xff;
+	mac[3] = 0xff;
+	mac[4] = 0xff;
+	mac[5] = 0xff;
     #endif
     return 0;
 }
