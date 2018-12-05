@@ -2,6 +2,7 @@
 #define SK_BUFF_H
 
 #include <stdlib.h>
+#include <string.h>
 
 #define LL_MAX_HEADER 128
 #define MAX_HEADER (LL_MAX_HEADER + 48)
@@ -35,6 +36,7 @@ struct sk_buff{
 
     char*           dest_ip;   // 目的ip
     int             dest_port; // 目的端口
+    unsigned char*  dest_mac; // 目的mac
 };
 
 #define skb_data(SKB) (SKB->data)
