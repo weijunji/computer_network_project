@@ -2,10 +2,10 @@
 #include <stdio.h>
 
 int main(){
-    struct sk_buff *skb = alloc_skb(20);
+    struct sk_buff *skb = alloc_skb(11);
     skb_put(skb, "hello world", 11);
-    skb_push(skb, "header ", 7);
-    skb_put(skb, " tail", 5);
+    skb_push(skb, "header", 6);
+    skb_put(skb, "tail", 4);
     printf("%s\n", skb_data(skb)); // result: header hello world tail
 
     skb_pull(skb, 7);
