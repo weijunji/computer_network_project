@@ -1,11 +1,5 @@
 #include "sk_buff.h"
 
-void strcpy(char* dis, char* source){
-    for(; *source != '\0'; source++, dis++){
-        *dis = *source;
-    }
-}
-
 struct sk_buff* alloc_skb(unsigned int size){
     struct sk_buff* skb = (struct sk_buff*) malloc(sizeof(struct sk_buff));
     skb->head = (unsigned char*) malloc(sizeof(unsigned char) * (MAX_TCP_HEADER + size + MAX_TAIL));
@@ -29,14 +23,15 @@ static void _skb_reserver(struct sk_buff *skb, int len){
 }
 
 void skb_put(struct sk_buff *skb, unsigned char* data, unsigned int len){
-    strcpy(skb->tail, data);
+    memcpy(skb->tail, data, len);
     skb->tail += len;
+    *(skb->tail) = '\0';
     skb->len += len;
 }
 
 void skb_push(struct sk_buff *skb, unsigned char* data, unsigned int len){
     skb->data -= len;
-    strcpy(skb->data, data);
+    memcpy(skb->data, data, len);
     skb->len += len;
 }
 
