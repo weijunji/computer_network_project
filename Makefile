@@ -13,9 +13,9 @@ bindir :
 SERVER_DIR := src/server/
 SRC_DIR = src/
 
-server : server_main.o socket_server.o bindir sk_buff.o net.o crc32.o
+server : server_main.o socket_server.o bindir sk_buff.o net.o crc32.o checksum.o
 	$(CC) $(CFLAGS) -o bin/server $(SERVER_DIR)main.o $(SERVER_DIR)socket_server.o \
-	$(SRC_DIR)sk_buff.o $(SRC_DIR)net.o $(SRC_DIR)crc32.o
+	$(SRC_DIR)sk_buff.o $(SRC_DIR)net.o $(SRC_DIR)crc32.o $(SRC_DIR)checksum.o
 
 server_main.o : socket_server.o
 	cd $(SERVER_DIR) && $(CC) $(CFLAGS) -c -o main.o main.c
@@ -25,9 +25,9 @@ socket_server.o :
 
 CLIENT_DIR = src/client/
 
-client : client_main.o socket_client.o bindir sk_buff.o net.o crc32.o
+client : client_main.o socket_client.o bindir sk_buff.o net.o crc32.o checksum.o
 	$(CC) -o bin/client $(CLIENT_DIR)main.o $(CLIENT_DIR)socket_client.o \
-	$(SRC_DIR)sk_buff.o $(SRC_DIR)net.o $(SRC_DIR)crc32.o
+	$(SRC_DIR)sk_buff.o $(SRC_DIR)net.o $(SRC_DIR)crc32.o $(SRC_DIR)checksum.o
 
 socket_client.o : 
 	cd $(CLIENT_DIR) && $(CC) $(CFLAGS) -c -o socket_client.o socket_client.c
@@ -47,6 +47,9 @@ net.o :
 
 crc32.o :
 	cd $(SRC_DIR) && $(CC) $(CFLAGS) -c -o crc32.o crc32.c
+
+checksum.o :
+	cd $(SRC_DIR) && $(CC) $(CFLAGS) -c -o checksum.o checksum.c
 
 .PHONY : clean
 clean: 
