@@ -2,9 +2,11 @@
 #include "../sk_buff.h"
 #include "../net.h"
 #include "../crc32.h"
+#include "../checksum.h"
 #include <string.h>
 
 void physical_layer(char *bit_stream, unsigned int len, char* ip, int port);
+void data_link_layer(struct sk_buff *skb, unsigned char* dest_mac);
 
 void print_char(const unsigned char* data, int len){
 	for(int i = 0; i < len; i++){
@@ -44,8 +46,60 @@ void transport_layer(struct sk_buff *skb)
 
 /* Network layer */
 
+struct ipv4_header {
+	unsigned char	version : 4;
+	unsigned char	header_length : 4;
+	unsigned char	service;
+	unsigned short	total_length;
+	unsigned short	identifier;
+	unsigned short	flag : 3;
+	unsigned short	offset : 13;
+	unsigned char	ttl;
+	unsigned char	protocol; // 1 ICMP; 2 IGMP; 6 TCP; 17 UPD;
+	unsigned short	checksum;
+	unsigned int 	source;
+	unsigned int 	dest;
+};
+
 void network_layer(struct sk_buff *skb)
 {
+	printf("\nNetwork layer:\n");
+	printf("Data:\n");
+	print_char(skb->data, skb->len);
+
+	int size = sizeof(struct ipv4_header);
+	struct ipv4_header* header = (struct ipv4_header*) malloc(sizeof(struct ipv4_header));
+	header->version = 4;
+	header->header_length = size / 4;
+	header->service = 0;
+	header->total_length = size + skb->len;
+	header->identifier = 0;
+	header->flag = 0;
+	header->offset = 0;
+	header->ttl = 1;
+	header->protocol = skb->protocol;
+	header->checksum = 0;
+
+	char source_ip[16];
+	get_local_ip(source_ip);
+	printf("Source ip:\t%s\n", source_ip);
+	header->source = inet_addr(source_ip);
+	printf("Dest ip:\t%s\n", skb->dest_ip);
+	header->dest = inet_addr(skb->dest_ip);
+	//printf("%s", source_ip);
+
+	header->checksum = checksum((void*)header, size);
+	printf("Checksum:\t0x%x\n", header->checksum);
+	// printf("%x\n", checksum((void*)header, size));
+
+	skb_push(skb, (unsigned char*)header, size);
+	skb->protocol = 0x0800; // IP Protocol
+
+	unsigned char* dest_mac = (unsigned char*) malloc(sizeof(char) * 6);
+	get_remote_mac(skb->dest_ip, dest_mac);
+
+	data_link_layer(skb, dest_mac);
+	free(dest_mac);
 }
 
 /* End of network layer */
@@ -77,7 +131,7 @@ struct ethernet_head{
 	unsigned short type; // 0800 IPv4; 0806 ARP; 86DD IPv6
 };
 
-void data_link_layer(struct sk_buff *skb)
+void data_link_layer(struct sk_buff *skb, unsigned char* dest_mac)
 {
 	printf("\nData link layer:\n");
 	printf("Data: \n");
@@ -85,21 +139,21 @@ void data_link_layer(struct sk_buff *skb)
 
 	struct ethernet_head* head = (struct ethernet_head*) malloc(sizeof(struct ethernet_head));
 
-	get_remote_mac(skb->dest_ip, head->dest_mac);  // TODO: PUT TO IP
+	memcpy(head->dest_mac, dest_mac, 6);
 
 	get_local_mac(head->sour_mac);
 
 	head->length = skb->len;
 
-	head->type = 0x0800; // TODO: GET FROM SKB->PROTOCOL
+	head->type = skb->protocol; // TODO: GET FROM SKB->PROTOCOL
 
-	printf("Head:");
-	printf("\tdest mac: ");
+	printf("Header:");
+	printf("\tdest mac:\t");
 	print_mac_address(head->dest_mac);
-	printf("\n\tsour mac: ");
+	printf("\n\tsour mac:\t");
 	print_mac_address(head->sour_mac);
-	printf("\n\tlength: %d\n", head->length);
-	printf("\tprotocol: %04x\n", head->type);
+	printf("\n\tlength:\t\t%d\n", head->length);
+	printf("\tprotocol:\t%04x\n", head->type);
 	printf("\n");
 
 	// 填充
@@ -211,8 +265,10 @@ int main(){
 
 	struct sk_buff *skb = alloc_skb(20);
 	skb_put(skb, (unsigned char*)s, 11);
-	char* ip = "192.168.31.36";
+	char* ip = "192.168.31.36"; // 241F A8C0
 	skb->dest_ip = ip;
 	skb->dest_port = 9628;
-	data_link_layer(skb);
+	unsigned char dest_mac[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+	// data_link_layer(skb, dest_mac);
+	network_layer(skb);
 }
