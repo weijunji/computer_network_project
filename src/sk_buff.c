@@ -9,6 +9,7 @@ struct sk_buff* alloc_skb(unsigned int size){
     _skb_reserver(skb, MAX_TCP_HEADER);
     skb->next = NULL;
     skb->prev = NULL;
+    skb->len = 0;
     return skb;
 }
 

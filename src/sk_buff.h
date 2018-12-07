@@ -29,14 +29,14 @@ struct sk_buff{
                     *tail,
                     *end;
 
-    unsigned int    len,      // 向下一层传递的长度
-                    data_len; // 实际数据长度（不包括头尾）
+    unsigned int    len,        // 向下一层传递的长度
+                    segment;    // TCP 段号
 
-    unsigned short  protocol; // 通知上层用什么协议处理
+    unsigned short  protocol;   // 通知上层用什么协议处理
 
-    char*           dest_ip;   // 目的ip
-    int             dest_port; // 目的端口
-    unsigned char*  dest_mac; // 目的mac
+    char*           dest_ip;    // 目的ip
+    int             dest_port;  // 目的端口
+    unsigned char*  dest_mac;   // 目的mac
 };
 
 #define skb_data(SKB) (SKB->data)
