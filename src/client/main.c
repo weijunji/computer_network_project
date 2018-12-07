@@ -7,6 +7,7 @@
 
 void physical_layer(char *bit_stream, unsigned int len, char* ip, int port);
 void data_link_layer(struct sk_buff *skb, unsigned char* dest_mac);
+void network_layer(struct sk_buff *skb);
 
 void print_char(const unsigned char* data, int len){
 	for(int i = 0; i < len; i++){
@@ -38,8 +39,94 @@ void application_layer(char *data, char *dest_ip)
 
 /* Transport layer */
 
-void transport_layer(struct sk_buff *skb)
-{
+struct tcp_header {
+	unsigned short	source_port;
+	unsigned short	dest_port;
+	unsigned int	segment;
+	unsigned int	acknum;
+	unsigned char	offset : 4;
+	unsigned char	reserved : 4;
+	unsigned char	CWR : 1;
+	unsigned char	ECE : 1;
+	unsigned char	URG : 1;
+	unsigned char	ACK : 1;
+	unsigned char	PSH : 1;
+	unsigned char	RST : 1;
+	unsigned char	SYN : 1;
+	unsigned char	FIN : 1;
+	unsigned short	window;
+	unsigned short	checksum;
+	unsigned short  urgent_p;   //紧急指针
+};
+
+int sys_port(){
+	return 9629;
+}
+
+void tcp(char* data, int dest_port){
+	struct tcp_header* header = (struct tcp_header*) malloc(sizeof(struct tcp_header));
+	
+	header->source_port = sys_port();
+	header->dest_port = dest_port;
+	header->offset = sizeof(struct tcp_header) / 4;
+	header->reserved = 0;
+	header->CWR = 0;
+	header->ECE = 0;
+	header->URG = 0;
+	header->ACK = 0;
+	header->PSH = 0;
+	header->RST = 0;
+	header->SYN = 0;
+	header->FIN = 0;
+	header->window = 0;
+	header->checksum = 0;
+	header->urgent_p = 0;
+
+	unsigned int len = strlen(data);
+	unsigned int i = 0, j = len / 1460;
+	unsigned short sum;
+	if(len>1460)                               //分段
+	{
+		struct sk_buff** skb = (struct sk_buff**) malloc(sizeof(struct sk_buff*)*j);
+		for(i = 0; i < j; i++)
+		{
+			skb[i]=alloc_skb(1460);
+			skb_put(skb[i], (unsigned char*)data, 1460);
+			getbyte(i/65536,header->segment);
+			getbyte(i%65536,header->segment+2);           //加32位的段序号
+			skb_push(skb[i],(unsigned char*)header,20);           //数据前加头
+			sum = checksum(skb[i]->data, 1480);
+			*((unsigned short*)skb[i]->data+16) = sum;
+			data += 1460; // data 指向下一次发送的地方
+			skb[i]->protocol = 0x0800; // IP protocol
+
+			network_layer(skb[i]);
+			free_skb(skb[i]);
+		}
+	}
+
+	int last=len%1460; //最后一段（唯一一段）
+	struct sk_buff *sklast = alloc_skb(last);
+	skb_put(sklast,(unsigned char*)data,last);
+	header->FIN = 1;
+	getbyte(i/65536,header->segment);
+	getbyte(i%65536,header->segment+2);
+	skb_push(sklast,(unsigned char*)header,20);
+	sum = checksum(sklast->data,last);
+	*((unsigned short*)sklast->data+16) = sum;
+	sklast->protocol = 0x0800;
+
+	network_layer(sklast);
+	free_skb(sklast);
+	free(header);
+}
+
+void transport_layer(char* data, int protocol, int dest_port){
+	if(protocol == 6){
+		tcp(data, dest_port);
+	}else{
+		printf("Protocol %d not support", protocol);
+	}
 }
 
 /* End of transport layer */
@@ -61,12 +148,7 @@ struct ipv4_header {
 	unsigned int 	dest;
 };
 
-void network_layer(struct sk_buff *skb)
-{
-	printf("\nNetwork layer:\n");
-	printf("Data:\n");
-	print_char(skb->data, skb->len);
-
+void ipv4(struct sk_buff* skb){
 	int size = sizeof(struct ipv4_header);
 	struct ipv4_header* header = (struct ipv4_header*) malloc(sizeof(struct ipv4_header));
 	header->version = 4;
@@ -100,6 +182,18 @@ void network_layer(struct sk_buff *skb)
 
 	data_link_layer(skb, dest_mac);
 	free(dest_mac);
+}
+
+void network_layer(struct sk_buff *skb){
+	printf("\nNetwork layer:\n");
+	printf("Data:\n");
+	print_char(skb->data, skb->len);
+
+	if(skb->protocol == 0x0800){
+		ipv4(skb);
+	}else{
+		printf("Protocol %d not support", skb->protocol);
+	}
 }
 
 /* End of network layer */
@@ -268,6 +362,7 @@ int main(){
 	char* ip = "192.168.31.36"; // 241F A8C0
 	skb->dest_ip = ip;
 	skb->dest_port = 9628;
+	skb->protocol = 0x0800;
 	unsigned char dest_mac[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 	// data_link_layer(skb, dest_mac);
 	network_layer(skb);
