@@ -22,12 +22,134 @@ void print_char(const unsigned char* data, int len){
 	putchar('\n');
 }
 
+/* Application layer */
+
+void application_layer(char* data){
+	printf("\nApplication layer:\n");
+	print_char(data, strlen(data));
+}
+
+/* End of application layer */
+
 /* Transport layer */
+
+struct tcp_header {
+	unsigned short	source_port;
+	unsigned short	dest_port;
+	unsigned int	segment;
+	unsigned int	acknum;
+	unsigned char	offset : 4;
+	unsigned char	reserved : 4;
+	unsigned char	CWR : 1;
+	unsigned char	ECE : 1;
+	unsigned char	URG : 1;
+	unsigned char	ACK : 1;
+	unsigned char	PSH : 1;
+	unsigned char	RST : 1;
+	unsigned char	SYN : 1;
+	unsigned char	FIN : 1;
+	unsigned short	window;
+	unsigned short	checksum;
+	unsigned short  urgent_p;   //紧急指针
+};
+
+struct sk_buff* skb_h = NULL;
+struct sk_buff* skb_t = NULL;
+
+void insert(struct sk_buff  *skb)
+{
+	if(skb_h == NULL)
+	{
+		skb_h = skb;
+		skb_t = skb;
+		return;
+	}
+	struct sk_buff* inser=skb_t;
+	while(inser != NULL && inser->segment > skb->segment)
+		inser=inser->prev;
+	if(inser==skb_t)                    //插入位置为尾
+	{
+		skb_t->next=skb;
+		skb->prev=skb_t;
+		skb_t=skb;
+	}
+	else if(inser==NULL)             //插入位置为头
+	{
+		skb_h->prev=skb;
+		skb->next=skb_h;
+		skb_h=skb;
+	}
+	else
+	{
+		skb->next=inser->next;
+		skb->next->prev=skb;
+		inser->next=skb;
+		skb->prev=inser;
+	}
+}
+
+bool check()
+{
+	if(skb_h->next == NULL && skb_h->segment == 0) //唯一段时
+		return true;
+	
+	unsigned int i=0;
+	struct sk_buff* contin=skb_h;
+	while(contin != NULL && contin->segment == i*1460)
+	{
+		contin=contin->next;
+		i++;
+	}
+	if(i * 1460 == skb_t->segment)
+		return true;
+	else
+		return false;
+}
+
+void tcp(struct sk_buff* skb){
+	static int flag = 0;
+	struct tcp_header* header = (struct tcp_header*) malloc(sizeof(struct tcp_header));
+	memcpy(header, skb->data, 20);
+	flag = header->FIN;
+
+	unsigned short sum = checksum(skb->data, skb->len);
+	printf("Checksum: %x\n", sum);
+	printf("Header:");
+	
+	skb->segment = header->segment;
+	printf("\tSegment:\t%d\n", skb->segment);
+	
+	if(sum != 0){
+		printf("段检验错误，放弃此段\n");
+		free_skb(skb);
+		return;
+	}
+
+	skb_pull(skb,20);
+	insert(skb);
+	if(flag==1 && check()){ // 数据包完整
+		while(skb_h != NULL){
+			application_layer((char*)skb_h->data);
+			struct sk_buff* pre;
+			pre = skb_h;
+			skb_h=skb_h->next;
+			free_skb(pre);
+		}
+		flag=0; //完成发送重置flag
+	}
+}
 
 void transport_layer(struct sk_buff *skb){
 	printf("\nTransport layer:\n");
 	printf("Data:\n");
 	print_char(skb->data, skb->len);
+	printf("Protocol: %d\n", skb->protocol);
+
+	if(skb->protocol == 6){
+		tcp(skb);
+	}else{
+		printf("Protocol %d not support", skb->protocol);
+	}
 }
 
 /* End of transport layer */
@@ -43,7 +165,7 @@ struct ipv4_header {
 	unsigned short	flag : 3;
 	unsigned short	offset : 13;
 	unsigned char	ttl;
-	unsigned char	protocol;
+	unsigned char	protocol; // 1 ICMP; 2 IGMP; 6 TCP; 17 UPD;
 	unsigned short	checksum;
 	unsigned int 	source;
 	unsigned int 	dest;
@@ -71,6 +193,8 @@ void ipv4(struct sk_buff* skb){
 		printf("Checksum ERROR: Drop");
 		return;
 	}
+
+	skb->protocol = header->protocol;
 
 	free(header);
 	transport_layer(skb);

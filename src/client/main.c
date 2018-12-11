@@ -7,6 +7,8 @@
 
 void physical_layer(char *bit_stream, unsigned int len, char* ip, int port);
 void data_link_layer(struct sk_buff *skb, unsigned char* dest_mac);
+void network_layer(struct sk_buff *skb);
+void transport_layer(char* data, char* dest_ip, int dest_port, int protocol);
 
 void print_char(const unsigned char* data, int len){
 	for(int i = 0; i < len; i++){
@@ -26,20 +28,113 @@ void print_char(const unsigned char* data, int len){
 
 struct application_layer_header
 {
-	char h;
+	char name[16];
 };
 
-void application_layer(char *data, char *dest_ip)
+void application_layer(char *data, char *dest_ip, int dest_port)
 {
-	
+	transport_layer(data, dest_ip, dest_port, 6);
 }
 
 /* End of application layer */
 
 /* Transport layer */
 
-void transport_layer(struct sk_buff *skb)
-{
+struct tcp_header {
+	unsigned short	source_port;
+	unsigned short	dest_port;
+	unsigned int	segment;
+	unsigned int	acknum;
+	unsigned char	offset : 4;
+	unsigned char	reserved : 4;
+	unsigned char	CWR : 1;
+	unsigned char	ECE : 1;
+	unsigned char	URG : 1;
+	unsigned char	ACK : 1;
+	unsigned char	PSH : 1;
+	unsigned char	RST : 1;
+	unsigned char	SYN : 1;
+	unsigned char	FIN : 1;
+	unsigned short	window;
+	unsigned short	checksum;
+	unsigned short  urgent_p;   //紧急指针
+};
+
+int sys_port(){
+	return 9629;
+}
+
+void tcp(char* data, char* dest_ip, int dest_port){
+	struct tcp_header* header = (struct tcp_header*) malloc(sizeof(struct tcp_header));
+	
+	header->source_port = sys_port();
+	header->dest_port = dest_port;
+	header->offset = sizeof(struct tcp_header) / 4;
+	header->reserved = 0;
+	header->CWR = 0;
+	header->ECE = 0;
+	header->URG = 0;
+	header->ACK = 0;
+	header->PSH = 0;
+	header->RST = 0;
+	header->SYN = 0;
+	header->FIN = 0;
+	header->window = 0;
+	header->checksum = 0;
+	header->urgent_p = 0;
+
+	unsigned int len = strlen(data);
+	unsigned int i = 0, j = len / 1460;
+	unsigned short sum;
+	if(len>1460)                               //分段
+	{
+		struct sk_buff** skb = (struct sk_buff**) malloc(sizeof(struct sk_buff*)*j);
+		for(i = 0; i < j; i++)
+		{
+			skb[i] = alloc_skb(1460);
+			skb_put(skb[i], (unsigned char*)data, 1460);
+			header->segment = i*1460;                              //加32位的段序号(段号之间间隔数据字节数)
+			skb_push(skb[i], (unsigned char*)header, 20);          //数据前加头
+			sum = checksum(skb[i]->data, 1480);
+			*((unsigned short*)skb[i]->data + 16) = sum;                     //校验和放在16、17字段
+			data += 1460;                                        //挪指针
+			skb[i]->protocol=6;
+			skb[i]->dest_ip = dest_ip;
+			skb[i]->dest_port = dest_port;
+
+			network_layer(skb[i]); 
+			free_skb(skb[i]);
+		}
+	}
+
+	int last=len%1460; //最后一段（唯一一段）
+	struct sk_buff *sklast = alloc_skb(last);
+	skb_put(sklast, (unsigned char*)data, last);
+	header->FIN = 1;
+	header->segment = i*1460;
+	skb_push(sklast, (unsigned char*)header, 20);
+
+	sum = checksum(sklast->data, sklast->len);
+
+	*((unsigned short*)(sklast->data + 16)) =sum;
+
+	sum = checksum(sklast->data, sklast->len);
+	sklast->protocol = 6;
+	sklast->dest_ip = dest_ip;
+	sklast->dest_port = dest_port;
+	print_char(sklast->data, sklast->len);
+
+	network_layer(sklast);
+	free_skb(sklast);
+	free(header);
+}
+
+void transport_layer(char* data, char* dest_ip, int dest_port, int protocol){
+	if(protocol == 6){
+		tcp(data, dest_ip, dest_port);
+	}else{
+		printf("Protocol %d not support", protocol);
+	}
 }
 
 /* End of transport layer */
@@ -61,12 +156,7 @@ struct ipv4_header {
 	unsigned int 	dest;
 };
 
-void network_layer(struct sk_buff *skb)
-{
-	printf("\nNetwork layer:\n");
-	printf("Data:\n");
-	print_char(skb->data, skb->len);
-
+void ipv4(struct sk_buff* skb){
 	int size = sizeof(struct ipv4_header);
 	struct ipv4_header* header = (struct ipv4_header*) malloc(sizeof(struct ipv4_header));
 	header->version = 4;
@@ -100,6 +190,14 @@ void network_layer(struct sk_buff *skb)
 
 	data_link_layer(skb, dest_mac);
 	free(dest_mac);
+}
+
+void network_layer(struct sk_buff *skb){
+	printf("\nNetwork layer:\n");
+	printf("Data:\n");
+	print_char(skb->data, skb->len);
+
+	ipv4(skb);
 }
 
 /* End of network layer */
@@ -250,6 +348,7 @@ void physical_layer(char *bit_stream, unsigned int len, char* ip, int port)
 
 	int *sockfd = (int *)malloc(sizeof(int));
 
+	// printf("%s %d", ip, port);
 	init_socket(sockfd, ip, port);
 	ssend(sockfd, (char *)bit_stream);
 
@@ -259,16 +358,29 @@ void physical_layer(char *bit_stream, unsigned int len, char* ip, int port)
 
 /* End of physical layer */
 
+char* textFileRead(char* filename)
+{
+	char* text;
+	FILE *pf = fopen(filename, "r");
+	if(pf == NULL){
+		printf("ERROR\n");
+		return NULL;
+	}
+	fseek(pf,0,SEEK_END);
+	long lSize = ftell(pf);
+	// 用完后需要将内存free掉
+	text=(char*)malloc(lSize+1);
+	rewind(pf); 
+	fread(text,sizeof(char),lSize,pf);
+	text[lSize] = '\0';
+	return text;
+}
+
 int main(){
 	char *s = "skdskdfbksj";
-	// physical_layer(s);
-
-	struct sk_buff *skb = alloc_skb(20);
-	skb_put(skb, (unsigned char*)s, 11);
-	char* ip = "192.168.31.36"; // 241F A8C0
-	skb->dest_ip = ip;
-	skb->dest_port = 9628;
-	unsigned char dest_mac[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-	// data_link_layer(skb, dest_mac);
-	network_layer(skb);
+	char* ip = "192.168.43.34";
+	//char* filename = "test.txt";
+	//char* data = textFileRead(filename);
+	//printf("%d\n", strlen(data));
+	application_layer(s, ip, 9628);
 }
