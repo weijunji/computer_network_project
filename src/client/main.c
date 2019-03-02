@@ -378,7 +378,7 @@ char* textFileRead(char* filename)
 
 int main(){
 	char *s = "skdskdfbksj";
-	char* ip = "192.168.43.34";
+	char* ip = "192.168.31.36";
 	//char* filename = "test.txt";
 	//char* data = textFileRead(filename);
 	//printf("%d\n", strlen(data));
